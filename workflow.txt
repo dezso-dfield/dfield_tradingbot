@@ -1,0 +1,15 @@
+Top-50 (CoinGecko) ─┐
+                    ├─> Fetch OHLCV (CoinGecko daily OR Binance klines)
+                    │
+                 [DataFrame per coin]
+                    │
+        ┌────────── TA (pandas_ta) ──────────┐
+        │                                     │
+     IndicatorPacket                    (optional) Chart PNG
+        │                                     │
+        ├──────────> LLM (Ollama text/vision) ──────────┐
+        │                                               │
+   LLMDecision (strict JSON)                            │
+        └────────────────> Ranker (heuristics) ─────────┘
+                           │
+                     signals.json + console/HTML report
