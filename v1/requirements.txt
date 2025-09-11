@@ -1,0 +1,9 @@
+pandas==2.2.2
+numpy==1.26.4
+requests==2.32.3
+pydantic==2.8.2
+pandas_ta==0.3.14b0
+mplfinance==0.12.10b0
+python-dotenv==1.0.1
+rich==13.7.1
+ccxt==4.4.25

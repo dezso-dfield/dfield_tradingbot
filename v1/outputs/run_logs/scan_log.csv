@@ -1,0 +1,20 @@
+ts_run_iso,symbol,timeframe,price_time_iso,latest_close,live_price,action,bias,conviction,entry_zone,invalidation,targets,candle_signal,candle_score
+2025-09-11T18:50:00.354154,SUI,1h,2025-09-11T18:00:00,3.6078,3.6078,long,bull,0.75,Bullish Engulfing at 3.6078,RSI > 70 or MACD signal line crossover,4.35|4.55,Bullish Engulfing,3.0
+2025-09-11T18:50:00.354154,LTC,1h,2025-09-11T18:00:00,114.91,114.91,long,bull,0.72,114.40 - 114.80,below 113.60,121.00|124.50,Hammer,2.0
+2025-09-11T18:50:00.354154,SOL,1h,2025-09-11T18:00:00,226.3,226.31,long,bull,0.70,above SMA200 and Stoch RSI bullish,below SMA50 or MACD signal line,232.5-235.8,None,0.0
+2025-09-11T18:50:00.354154,DOGE,1h,2025-09-11T18:00:00,0.25118,0.25118,long,bull,0.70,above 0.25118,below 0.2475,0.258|0.262,None,0.0
+2025-09-11T18:50:00.354154,BTC,1h,2025-09-11T18:00:00,114256.74,114256.74,short,bear,0.70,114200-114300,break above SMA200 or RVOL20 < 0.5,113600|112400,Bearish Engulfing,-3.0
+2025-09-11T18:50:00.354154,BNB,1h,2025-09-11T18:00:00,895.51,895.5,long,bull,0.70,899.00 - 901.00,880.00,913.00|925.00,None,0.0
+2025-09-11T18:50:00.354154,LINK,1h,2025-09-11T18:00:00,23.8,23.8,long,bull,0.70,23.6-24.2,break below 23.4,24.5|25.1,None,0.0
+2025-09-11T18:50:00.354154,PENGU,1h,2025-09-11T18:00:00,0.033619,0.033614,long,bull,0.70,above SMA200 and above BBWidth,below SMA50 and below ATR% threshold,SMA50|R1 (ATR*2),None,0.0
+2025-09-11T18:50:00.354154,FORM,1h,2025-09-11T18:00:00,2.6286,2.6271,long,bull,0.85,near the 1h close of 2.6286,break below 2.6148 and subsequent confirmation,2.65|2.7,Inside Bar,0.0
+2025-09-11T18:50:00.354154,AVAX,1h,2025-09-11T18:00:00,29.02,29.02,long,bull,0.65,29.02 to 30.00,break below 28.50,30.20|31.00,Inside Bar,0.0
+2025-09-11T18:50:00.354154,XRP,1h,2025-09-11T18:00:00,3.0178,3.018,long,bull,0.65,above SMA200 and above SMA50,below SMA50 or below previous low,previous high|around 3.30,None,0.0
+2025-09-11T18:50:00.354154,ENA,1h,2025-09-11T18:00:00,0.7653,0.7653,long,bull,0.65,above SMA200,below SMA50 and RSI below 30,retest of SMA200|new high,None,0.0
+2025-09-11T18:50:00.354154,ADA,1h,2025-09-11T18:00:00,0.8809,0.8809,long,bull,0.73,above SMA200,below SMA50,0.9000|0.9200,None,0.0
+2025-09-11T18:50:00.354154,TRX,1h,2025-09-11T18:00:00,0.3456,0.3456,long,bull,0.70,"Inside the hammer candle, above SMA200",Failure to close above SMA200 or RSI divergence,0.3656|0.3808,"Hammer, Inside Bar",2.0
+2025-09-11T18:50:00.354154,ARB,1h,2025-09-11T18:00:00,0.519,0.519,long,bull,0.70,above SMA200,below SMA50 or failure to break above SMA200,retest of SMA200|breakout above recent highs,Inside Bar,0.0
+2025-09-11T18:50:00.354154,WLD,1h,2025-09-11T18:00:00,1.63,1.63,long,bull,0.70,above SMA200,below SMA50 and RSI < 30,1.75|1.85,None,0.0
+2025-09-11T18:50:00.354154,WLFI,1h,2025-09-11T18:00:00,0.1904,0.1904,long,bull,0.80,0.1850 - 0.1875,break below 0.1830,0.1920|0.1950,None,0.0
+2025-09-11T18:50:00.354154,ETH,1h,2025-09-11T18:00:00,4423.66,4423.66,long,bull,0.65,4423.66 - 4431.33,break below 4359.11,4456.34|4512.92,None,0.0
+2025-09-11T18:50:00.354154,PEPE,1h,2025-09-11T18:00:00,1.049e-05,1.049e-05,long,bull,0.60,inside the range of previous candles,failure to hold above SMA200,1.100e-05|1.200e-05,Inside Bar,0.0

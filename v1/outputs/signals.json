@@ -1,0 +1,416 @@
+[
+  {
+    "symbol": "SUI",
+    "score": 65.04,
+    "decision": {
+      "symbol": "SUI",
+      "bias": "bull",
+      "conviction": 0.75,
+      "action": "long",
+      "entry_zone": "Bullish Engulfing at 3.6078",
+      "invalidation": "RSI > 70 or MACD signal line crossover",
+      "targets": [
+        "4.35",
+        "4.55"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish candle with high conviction indicators.",
+      "risks": [
+        "Momentum reversal",
+        "Breakout failure"
+      ]
+    }
+  },
+  {
+    "symbol": "LTC",
+    "score": 63.23,
+    "decision": {
+      "symbol": "LTC",
+      "bias": "bull",
+      "conviction": 0.72,
+      "action": "long",
+      "entry_zone": "114.40 - 114.80",
+      "invalidation": "below 113.60",
+      "targets": [
+        "121.00",
+        "124.50"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong hammer candle with RSI and Stoch indicators in oversold territory, suggesting a potential reversal.",
+      "risks": [
+        "Stop-loss below 114.40",
+        "Potential for false breakout"
+      ]
+    }
+  },
+  {
+    "symbol": "SOL",
+    "score": 62.06,
+    "decision": {
+      "symbol": "SOL",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "above SMA200 and Stoch RSI bullish",
+      "invalidation": "below SMA50 or MACD signal line",
+      "targets": [
+        "232.5-235.8"
+      ],
+      "timeframe": "1h",
+      "reasoning": "SOL is trending above SMA200 with positive stochastic and RSI readings, indicating a potential uptrend.",
+      "risks": [
+        "reversal of trend on MACD signal line crossover"
+      ]
+    }
+  },
+  {
+    "symbol": "DOGE",
+    "score": 62.04,
+    "decision": {
+      "symbol": "DOGE",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "above 0.25118",
+      "invalidation": "below 0.2475",
+      "targets": [
+        "0.258",
+        "0.262"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Bullish bias due to RSI and Stoch indicating oversold conditions, while MACD is in a bullish setup. ATR indicates increasing volatility.",
+      "risks": [
+        "False breakout risk",
+        "Volatility increase risk"
+      ]
+    }
+  },
+  {
+    "symbol": "BTC",
+    "score": 62.03,
+    "decision": {
+      "symbol": "BTC",
+      "bias": "bear",
+      "conviction": 0.7,
+      "action": "short",
+      "entry_zone": "114200-114300",
+      "invalidation": "break above SMA200 or RVOL20 < 0.5",
+      "targets": [
+        "113600",
+        "112400"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Bearish engulfing candle and RSI overbought, MACD signal line below zero",
+      "risks": [
+        "reversal risk if price breaks SMA200",
+        "position sizing risk due to low conviction"
+      ]
+    }
+  },
+  {
+    "symbol": "BNB",
+    "score": 62.03,
+    "decision": {
+      "symbol": "BNB",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "899.00 - 901.00",
+      "invalidation": "880.00",
+      "targets": [
+        "913.00",
+        "925.00"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with RSI near oversold levels and MACD bullish crossover. SMA200 also indicates upward trend.",
+      "risks": [
+        "Volatility increase"
+      ]
+    }
+  },
+  {
+    "symbol": "LINK",
+    "score": 62.03,
+    "decision": {
+      "symbol": "LINK",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "23.6-24.2",
+      "invalidation": "break below 23.4",
+      "targets": [
+        "24.5",
+        "25.1"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish indicators, RSI oversold, MACD rising. Above SMA200, high volume trend.",
+      "risks": [
+        "RSI might not bounce back as expected",
+        "Break below 23.4 could lead to a deeper correction"
+      ]
+    }
+  },
+  {
+    "symbol": "PENGU",
+    "score": 62.01,
+    "decision": {
+      "symbol": "PENGU",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "above SMA200 and above BBWidth",
+      "invalidation": "below SMA50 and below ATR% threshold",
+      "targets": [
+        "SMA50",
+        "R1 (ATR*2)"
+      ],
+      "timeframe": "1h",
+      "reasoning": "PENGU is in an uptrend with a positive candle signal. RSI, Stoch, and ADX indicate a consolidation phase while MACD shows a bullish divergence.",
+      "risks": [
+        "volume trend remains weak",
+        "RSI may not be oversold"
+      ]
+    }
+  },
+  {
+    "symbol": "FORM",
+    "score": 61.0,
+    "decision": {
+      "symbol": "FORM",
+      "bias": "bull",
+      "conviction": 0.85,
+      "action": "long",
+      "entry_zone": "near the 1h close of 2.6286",
+      "invalidation": "break below 2.6148 and subsequent confirmation",
+      "targets": [
+        "2.65",
+        "2.7"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Bullish candles with strong RSI divergence, MACD signal line rising, and Stoch oscillator reaching oversold levels. ADX suggests a strengthening trend.",
+      "risks": [
+        "RSI could stay oversold for longer",
+        "MACD might not have enough strength to sustain the move"
+      ]
+    }
+  },
+  {
+    "symbol": "AVAX",
+    "score": 59.12,
+    "decision": {
+      "symbol": "AVAX",
+      "bias": "bull",
+      "conviction": 0.65,
+      "action": "long",
+      "entry_zone": "29.02 to 30.00",
+      "invalidation": "break below 28.50",
+      "targets": [
+        "30.20",
+        "31.00"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish signals from RSI and Stoch, with momentum indicators like MACD and ADX indicating a potential uptrend. Above SMA200 and healthy volume confirm the bullish case.",
+      "risks": [
+        "Break below 28.50 invalidates the trade",
+        "Volatility could lead to sudden price moves"
+      ]
+    }
+  },
+  {
+    "symbol": "XRP",
+    "score": 59.02,
+    "decision": {
+      "symbol": "XRP",
+      "bias": "bull",
+      "conviction": 0.65,
+      "action": "long",
+      "entry_zone": "above SMA200 and above SMA50",
+      "invalidation": "below SMA50 or below previous low",
+      "targets": [
+        "previous high",
+        "around 3.30"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with RSI oversold, MACD positive divergence, and ATR increasing indicating a strong move up.",
+      "risks": [
+        "reversal at SMA50",
+        "failed test of previous high"
+      ]
+    }
+  },
+  {
+    "symbol": "ENA",
+    "score": 59.0,
+    "decision": {
+      "symbol": "ENA",
+      "bias": "bull",
+      "conviction": 0.65,
+      "action": "long",
+      "entry_zone": "above SMA200",
+      "invalidation": "below SMA50 and RSI below 30",
+      "targets": [
+        "retest of SMA200",
+        "new high"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong momentum with above SMA200 and RSI in oversold territory. Bullish candle signal with a score +0.0. Volume trend is negative but not strong.",
+      "risks": [
+        "volume trend against us",
+        "potential retest of SMA50"
+      ]
+    }
+  },
+  {
+    "symbol": "ADA",
+    "score": 58.82,
+    "decision": {
+      "symbol": "ADA",
+      "bias": "bull",
+      "conviction": 0.73,
+      "action": "long",
+      "entry_zone": "above SMA200",
+      "invalidation": "below SMA50",
+      "targets": [
+        "0.9000",
+        "0.9200"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with MACD, RSI, and Stoch aligning; above SMA200 and ADX increasing.",
+      "risks": [
+        "reversal at SMA50",
+        "volume contraction"
+      ]
+    }
+  },
+  {
+    "symbol": "TRX",
+    "score": 57.04,
+    "decision": {
+      "symbol": "TRX",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "Inside the hammer candle, above SMA200",
+      "invalidation": "Failure to close above SMA200 or RSI divergence",
+      "targets": [
+        "0.3656",
+        "0.3808"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish indicators: Hammer candle with high scoring Inside Bar, above SMA200. Additionally, RSI is oversold and ADX indicates a strong trend.",
+      "risks": [
+        "RSI divergence",
+        "Failure to close above SMA200"
+      ]
+    }
+  },
+  {
+    "symbol": "ARB",
+    "score": 57.0,
+    "decision": {
+      "symbol": "ARB",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "above SMA200",
+      "invalidation": "below SMA50 or failure to break above SMA200",
+      "targets": [
+        "retest of SMA200",
+        "breakout above recent highs"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with RSI near oversold levels, MACD and Stoch showing bullish divergence. ATR suggests low volatility.",
+      "risks": [
+        "failure to break above SMA200",
+        "loss of momentum"
+      ]
+    }
+  },
+  {
+    "symbol": "WLD",
+    "score": 57.0,
+    "decision": {
+      "symbol": "WLD",
+      "bias": "bull",
+      "conviction": 0.7,
+      "action": "long",
+      "entry_zone": "above SMA200",
+      "invalidation": "below SMA50 and RSI < 30",
+      "targets": [
+        "1.75",
+        "1.85"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with MACD and Stoch indicating a strong uptrend, combined with ATR showing volatility is increasing. Above SMA200 and VolumeTrendZ indicating a strong accumulation.",
+      "risks": [
+        "Stop loss at entry zone",
+        "Potential reversal if RSI < 30"
+      ]
+    }
+  },
+  {
+    "symbol": "WLFI",
+    "score": 56.0,
+    "decision": {
+      "symbol": "WLFI",
+      "bias": "bull",
+      "conviction": 0.8,
+      "action": "long",
+      "entry_zone": "0.1850 - 0.1875",
+      "invalidation": "break below 0.1830",
+      "targets": [
+        "0.1920",
+        "0.1950"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong RSI divergence, MACD signals bullish momentum, and SMA50/SMA200 slope indicates a potential bounce.",
+      "risks": [
+        "Stop-loss at 0.1850",
+        "Risk of false breakout"
+      ]
+    }
+  },
+  {
+    "symbol": "ETH",
+    "score": 54.03,
+    "decision": {
+      "symbol": "ETH",
+      "bias": "bull",
+      "conviction": 0.65,
+      "action": "long",
+      "entry_zone": "4423.66 - 4431.33",
+      "invalidation": "break below 4359.11",
+      "targets": [
+        "4456.34",
+        "4512.92"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong bullish momentum with RSI and MACD aligning, above SMA200 and strong volume trend.",
+      "risks": [
+        "Break below invalidation zone"
+      ]
+    }
+  },
+  {
+    "symbol": "PEPE",
+    "score": 51.01,
+    "decision": {
+      "symbol": "PEPE",
+      "bias": "bull",
+      "conviction": 0.6,
+      "action": "long",
+      "entry_zone": "inside the range of previous candles",
+      "invalidation": "failure to hold above SMA200",
+      "targets": [
+        "1.100e-05",
+        "1.200e-05"
+      ],
+      "timeframe": "1h",
+      "reasoning": "Strong ADX and RSI momentum signals a bullish trend, while MACD shows early signs of a potential uptrend.",
+      "risks": [
+        "price reversal at SMA200",
+        "loss of upside momentum"
+      ]
+    }
+  }
+]
