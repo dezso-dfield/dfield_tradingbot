@@ -1,0 +1,625 @@
+[
+  {
+    "symbol": "XRP",
+    "score": 59.01,
+    "decision": {
+      "symbol": "XRP",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.6,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        3.0432,
+        3.0618,
+        3.0805
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "TRX",
+    "score": 53.01,
+    "decision": {
+      "symbol": "TRX",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.3652,
+        0.3831
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "HYPE",
+    "score": 52.27,
+    "decision": {
+      "symbol": "HYPE",
+      "timeframe": "1d",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": "54.7",
+      "invalidation": null,
+      "targets": [
+        56.2,
+        58.8
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "RSETH",
+    "score": 50.22,
+    "decision": {
+      "symbol": "RSETH",
+      "timeframe": "1w",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        5140.0,
+        5200.0,
+        5300.0
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "WLFI",
+    "score": 50.08,
+    "decision": {
+      "symbol": "WLFI",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.2222,
+        0.2323
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "DOGE",
+    "score": 50.08,
+    "decision": {
+      "symbol": "DOGE",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.28506,
+        0.29426,
+        0.30346
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "BNB",
+    "score": 50.03,
+    "decision": {
+      "symbol": "BNB",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        960.0,
+        970.0,
+        980.0
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "SOL",
+    "score": 50.03,
+    "decision": {
+      "symbol": "SOL",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        246.11,
+        249.85
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "SUSDS",
+    "score": 50.02,
+    "decision": {
+      "symbol": "SUSDS",
+      "timeframe": "1d",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        1.099,
+        1.11,
+        1.12
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "PENGU",
+    "score": 50.0,
+    "decision": {
+      "symbol": "PENGU",
+      "timeframe": "4h",
+      "action": "short",
+      "bias": "bear",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.0311,
+        0.0322,
+        0.0333
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "USDC",
+    "score": 48.01,
+    "decision": {
+      "symbol": "USDC",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        1.001,
+        1.003
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "ETH",
+    "score": 47.03,
+    "decision": {
+      "symbol": "ETH",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        4650.0,
+        4700.0,
+        4750.0
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "ADA",
+    "score": 47.01,
+    "decision": {
+      "symbol": "ADA",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.9156,
+        0.9356
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "IP",
+    "score": 45.73,
+    "decision": {
+      "symbol": "IP",
+      "timeframe": "1d",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        10.2,
+        11.4
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "KCS",
+    "score": 45.29,
+    "decision": {
+      "symbol": "KCS",
+      "timeframe": "1w",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        17.5,
+        18.2,
+        19.5
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "JITOSOL",
+    "score": 45.26,
+    "decision": {
+      "symbol": "JITOSOL",
+      "timeframe": "1d",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        315.0,
+        325.0
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "WETH",
+    "score": 45.21,
+    "decision": {
+      "symbol": "WETH",
+      "timeframe": "1w",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        4812.23456789,
+        4956.78901234,
+        5119.23456789
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "PEPE",
+    "score": 45.08,
+    "decision": {
+      "symbol": "PEPE",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.001352,
+        0.001368
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "AVAX",
+    "score": 45.04,
+    "decision": {
+      "symbol": "AVAX",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        30.6,
+        31.2,
+        31.8
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "SUI",
+    "score": 45.03,
+    "decision": {
+      "symbol": "SUI",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        3.78,
+        3.92
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "SUSDE",
+    "score": 45.02,
+    "decision": {
+      "symbol": "SUSDE",
+      "timeframe": "1d",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        1.215,
+        1.22
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "BTC",
+    "score": 45.01,
+    "decision": {
+      "symbol": "BTC",
+      "timeframe": "1h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        115250.0,
+        115300.0,
+        115350.0
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "WLD",
+    "score": 45.0,
+    "decision": {
+      "symbol": "WLD",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        1.615,
+        1.625,
+        1.635
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "LINK",
+    "score": 45.0,
+    "decision": {
+      "symbol": "LINK",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        26.15,
+        27.2
+      ],
+      "style": "swing",
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "PUMP",
+    "score": 41.32,
+    "decision": {
+      "symbol": "PUMP",
+      "timeframe": "1h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.6,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.0095,
+        0.01
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "KHYPE",
+    "score": 40.27,
+    "decision": {
+      "symbol": "KHYPE",
+      "timeframe": "1d",
+      "action": "short",
+      "bias": "bear",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        45.6,
+        48.2,
+        51.3
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "ENA",
+    "score": 40.0,
+    "decision": {
+      "symbol": "ENA",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        0.7488,
+        0.7568,
+        0.7648
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "LTC",
+    "score": 35.0,
+    "decision": {
+      "symbol": "LTC",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        117.2,
+        119.8
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  },
+  {
+    "symbol": "UNI",
+    "score": 35.0,
+    "decision": {
+      "symbol": "UNI",
+      "timeframe": "4h",
+      "action": "long",
+      "bias": "bull",
+      "conviction": 0.5,
+      "entry_zone": null,
+      "invalidation": null,
+      "targets": [
+        9.6,
+        10.2
+      ],
+      "style": null,
+      "max_hold_bars": null,
+      "risk_pct_override": null,
+      "trail_atr_k_override": null
+    }
+  }
+]

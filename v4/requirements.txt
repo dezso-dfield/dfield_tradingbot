@@ -1,0 +1,23 @@
+# Core
+requests
+pandas
+numpy
+
+# Technical analysis
+pandas_ta
+ta
+
+# Plotting & charting
+matplotlib
+mplfinance
+
+# Rich console output
+rich
+
+# Validation / schema
+pydantic
+
+# Local LLM interaction (Ollama client)
+ollama
+
+# CSV/JSON utilities (standard libs already included, but some users prefer explicit)

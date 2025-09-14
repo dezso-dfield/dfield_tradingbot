@@ -1,0 +1,96 @@
+{
+  "cash_usd": 959.5504211191768,
+  "positions_market_value_usd": 8964.205966197589,
+  "total_equity_usd": 9923.756387316766,
+  "unrealized_pnl_usd": -25.405059747563048,
+  "starting_equity_usd": 10000.0,
+  "total_pnl_usd": -76.24361268323446,
+  "pnl_pct": -0.0076243612683234456,
+  "open_positions": [
+    {
+      "symbol": "ETH",
+      "side": "long",
+      "qty": 0.866100814134765,
+      "entry_price": 4615.46,
+      "current_price": 4589.39,
+      "market_value_usd": 3974.8744153819493,
+      "unrealized_pnl_usd": -22.57924822449307,
+      "stop_price": 4500.0,
+      "targets": [
+        4650.0,
+        4750.0
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T14:06:47.155321+00:00",
+      "last_update_iso": "2025-09-14T14:06:47.155323+00:00"
+    },
+    {
+      "symbol": "TRX",
+      "side": "long",
+      "qty": 2837.225850153443,
+      "entry_price": 0.3483,
+      "current_price": 0.3472,
+      "market_value_usd": 985.0848151732754,
+      "unrealized_pnl_usd": -3.1209484351687586,
+      "stop_price": 0.337851,
+      "targets": [
+        0.4,
+        0.45
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T14:06:47.156727+00:00",
+      "last_update_iso": "2025-09-14T14:06:47.156728+00:00"
+    },
+    {
+      "symbol": "WLFI",
+      "side": "long",
+      "qty": 3210.4030273772214,
+      "entry_price": 0.2124,
+      "current_price": 0.2121,
+      "market_value_usd": 680.9264821067087,
+      "unrealized_pnl_usd": -0.9631209082131494,
+      "stop_price": 0.20406285004343144,
+      "targets": [
+        0.22,
+        0.23
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T14:26:49.716626+00:00",
+      "last_update_iso": "2025-09-14T14:26:49.716628+00:00"
+    },
+    {
+      "symbol": "BNB",
+      "side": "long",
+      "qty": 3.0682975852880756,
+      "entry_price": 926.34,
+      "current_price": 926.81,
+      "market_value_usd": 2843.728885020841,
+      "unrealized_pnl_usd": 1.4420998650851304,
+      "stop_price": 920.0,
+      "targets": [
+        940.0,
+        960.0
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T14:59:11.660440+00:00",
+      "last_update_iso": "2025-09-14T14:59:11.660442+00:00"
+    },
+    {
+      "symbol": "SUI",
+      "side": "long",
+      "qty": 131.31574626658295,
+      "entry_price": 3.6536,
+      "current_price": 3.6522,
+      "market_value_usd": 479.59136851481423,
+      "unrealized_pnl_usd": -0.18384204477319588,
+      "stop_price": 3.543992,
+      "targets": [
+        3.6960235882,
+        3.7384471763
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T15:23:41.009490+00:00",
+      "last_update_iso": "2025-09-14T15:23:41.009492+00:00"
+    }
+  ]
+}

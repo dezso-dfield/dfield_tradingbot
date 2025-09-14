@@ -1,0 +1,81 @@
+{
+  "cash_usd": 1150.5939506801528,
+  "positions_market_value_usd": 8746.064680046038,
+  "total_equity_usd": 9896.658630726191,
+  "unrealized_pnl_usd": -18.53763643579527,
+  "starting_equity_usd": 10000.0,
+  "total_pnl_usd": -103.3413692738086,
+  "pnl_pct": -0.01033413692738086,
+  "open_positions": [
+    {
+      "symbol": "WLFI",
+      "side": "long",
+      "qty": 3210.4030273772214,
+      "entry_price": 0.2124,
+      "current_price": 0.2119,
+      "market_value_usd": 680.2844015012332,
+      "unrealized_pnl_usd": -1.6052015136886122,
+      "stop_price": 0.20406285004343144,
+      "targets": [
+        0.22,
+        0.23
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T14:26:49.716626+00:00",
+      "last_update_iso": "2025-09-14T14:26:49.716628+00:00"
+    },
+    {
+      "symbol": "WETH",
+      "side": "long",
+      "qty": 1.0037763012251413,
+      "entry_price": 4604.251401826146,
+      "current_price": 4591.67927316855,
+      "market_value_usd": 4609.018837233272,
+      "unrealized_pnl_usd": -12.61960480244861,
+      "stop_price": 4512.166373789623,
+      "targets": [
+        4800.0,
+        5200.0,
+        5600.0
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T15:06:54.846250+00:00",
+      "last_update_iso": "2025-09-14T15:06:54.846255+00:00"
+    },
+    {
+      "symbol": "BNB",
+      "side": "long",
+      "qty": 2.492965387085715,
+      "entry_price": 926.8,
+      "current_price": 925.07,
+      "market_value_usd": 2306.1674906313824,
+      "unrealized_pnl_usd": -4.312830119658049,
+      "stop_price": 917.7894145544234,
+      "targets": [
+        954.8,
+        970.1
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T15:34:53.251527+00:00",
+      "last_update_iso": "2025-09-14T15:51:44.705927+00:00"
+    },
+    {
+      "symbol": "XRP",
+      "side": "long",
+      "qty": 379.70891382751927,
+      "entry_price": 3.0302,
+      "current_price": 3.0302,
+      "market_value_usd": 1150.5939506801487,
+      "unrealized_pnl_usd": 0.0,
+      "stop_price": 2.9695959999999997,
+      "targets": [
+        3.0432,
+        3.0618,
+        3.0805
+      ],
+      "filled_targets": [],
+      "opened_iso": "2025-09-14T16:11:15.695348+00:00",
+      "last_update_iso": "2025-09-14T16:11:15.695352+00:00"
+    }
+  ]
+}
