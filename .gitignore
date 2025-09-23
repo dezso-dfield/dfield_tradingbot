@@ -1,4 +1,10 @@
-.venv
-v1/outputs
-v1/outputs
-.env
+.venv/
+.env/
+
+# outputs folders anywhere in the repo
+**/outputs/
+
+# if you also want to ignore v1/outputs specifically (already covered by above)
+v1/outputs/
+v2-chart-image-signal/outputs/
+v3-autonomous continous-trading/outputs/
