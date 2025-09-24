@@ -1,11 +1,13 @@
+# src/runner.py
 from __future__ import annotations
 
 import csv
 import json
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Tuple, List
+from typing import Tuple, List, Callable, Any
 
 from rich import print
 
@@ -26,18 +28,31 @@ from .utils import ensure_dir
 
 TRADES_CSV = Path("outputs/run_logs/trades.csv")
 DAEMON_LOG = Path("outputs/run_logs/daemon.log")
+HEARTBEAT = Path("outputs/run_logs/heartbeat.txt")
 POSITIONS_JSON = Path("outputs/positions/current_positions.json")
 POSITIONS_CSV = Path("outputs/positions/current_positions.csv")
 EQUITY_TS_CSV = Path("outputs/run_logs/equity_timeseries.csv")
 
+# ------------------ small retry helper ------------------
+def retry_call(fn: Callable, *, tries: int = 3, delay: float = 1.0, backoff: float = 2.0, on_error_msg: str = "") -> Any:
+    last_exc = None
+    for attempt in range(1, tries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_exc = e
+            if on_error_msg:
+                print(f"[yellow]{on_error_msg} (attempt {attempt}/{tries}): {e}")
+            time.sleep(delay)
+            delay *= backoff
+    # Give up: return None to keep the loop alive
+    return None
 
 def safe(val, default=0.0):
     return default if val is None else val
 
-
 def _append_trade_row(ts: str, action: str, symbol: str, side: str, qty: float, price: float,
                       equity_usd: float, stop_price=None, targets=None, note: str = ""):
-    """Append a single trade event to trades.csv (creates header if missing)."""
     TRADES_CSV.parent.mkdir(parents=True, exist_ok=True)
     first = not TRADES_CSV.exists()
     with open(TRADES_CSV, "a", newline="", encoding="utf-8") as f:
@@ -56,9 +71,7 @@ def _append_trade_row(ts: str, action: str, symbol: str, side: str, qty: float, 
             note
         ])
 
-
 def _write_positions_snapshot(state, price_map: dict[str, float]) -> None:
-    """Write current open positions to JSON and CSV for easy inspection (with MTM)."""
     POSITIONS_JSON.parent.mkdir(parents=True, exist_ok=True)
     data = []
     total_mkt_value = 0.0
@@ -144,6 +157,10 @@ def _write_positions_snapshot(state, price_map: dict[str, float]) -> None:
             len(state.open_positions)
         ])
 
+def _touch_heartbeat():
+    HEARTBEAT.parent.mkdir(parents=True, exist_ok=True)
+    with open(HEARTBEAT, "w", encoding="utf-8") as f:
+        f.write(datetime.now(timezone.utc).isoformat())
 
 def run_once(
     *,
@@ -167,6 +184,7 @@ def run_once(
     One full scan + trade management cycle with:
       - Hard stop, ATR trailing stop, close-based invalidation exits
       - Mark-to-market PnL & equity logs
+      - Defensive retries and per-symbol time guard
     """
     state = load_state()
     ensure_dir("outputs/top10_charts")
@@ -178,21 +196,34 @@ def run_once(
     if not hasattr(state, "starting_equity_usd") or state.starting_equity_usd is None:
         state.starting_equity_usd = float(getattr(state, "equity_usd", 10_000.0))
 
-    # ---- scan ----
-    uni = top_coins(universe_size)
+    # ---- universe with retry (handle CoinGecko 429 etc.) ----
+    def _get_uni():
+        return top_coins(universe_size)
+    uni = retry_call(_get_uni, tries=3, delay=1.0, backoff=2.0, on_error_msg="universe fetch failed")
+    if not uni:
+        print("[yellow]Universe empty after retries; skipping trading cycle[/]")
+
     pairs: List[Tuple] = []
     latest_price_map: dict[str, float] = {}
 
-    for coin_id, sym in uni:
+    # per-symbol time guard (so one slow symbol doesn’t stall)
+    PER_SYMBOL_MAX_SEC = 15.0
+
+    for coin_id, sym in (uni or []):
+        t0 = time.time()
         try:
             if use_binance:
                 sym_usdt = f"{sym}USDT"
-                df = binance_klines(sym_usdt, interval=timeframe, limit=limit)
+                df = retry_call(lambda: binance_klines(sym_usdt, interval=timeframe, limit=limit),
+                                tries=3, delay=1.0, backoff=2.0,
+                                on_error_msg=f"{sym}: klines failed")
                 if df is None or len(df) < 60:
                     continue
                 tf = timeframe
             else:
-                df = ohlcv_daily_coingecko(coin_id, days=days)
+                df = retry_call(lambda: ohlcv_daily_coingecko(coin_id, days=days),
+                                tries=3, delay=1.0, backoff=2.0,
+                                on_error_msg=f"{sym}: coingecko daily failed")
                 if df is None or len(df) < 60:
                     continue
                 tf = "1d"
@@ -205,21 +236,29 @@ def run_once(
             if safe(getattr(ind, "atr_pct", 0.0)) > max_atr_pct:
                 continue
 
-            # live price
+            # live price (retry)
             if use_binance:
-                live = binance_last_price(f"{sym}USDT")
-                ind.live_price = float(live) if live is not None else float(ind.latest_close)
+                lp = retry_call(lambda: binance_last_price(f"{sym}USDT"),
+                                tries=3, delay=0.5, backoff=1.7,
+                                on_error_msg=f"{sym}: last price failed")
+                ind.live_price = float(lp) if lp is not None else float(ind.latest_close)
             else:
                 ind.live_price = float(ind.latest_close)
             latest_price_map[sym] = float(ind.live_price)
 
-            # LLM decision
-            raw = ask_vision(vision_model, ind, "") if use_vision else ask_text(text_model, ind)
-            dec = parse_llm_json(sym, ind.timeframe, raw)
+            # LLM decision (wrap to never throw)
+            def _ask():
+                return ask_vision(vision_model, ind, "") if use_vision else ask_text(text_model, ind)
+            raw = retry_call(_ask, tries=2, delay=1.0, backoff=2.0, on_error_msg=f"{sym}: LLM call failed")
+            dec = parse_llm_json(sym, ind.timeframe, raw or "{}")
             pairs.append((ind, dec))
 
         except Exception as e:
             print(f"[yellow]{sym} skipped: {e}")
+            traceback.print_exc()
+        finally:
+            if time.time() - t0 > PER_SYMBOL_MAX_SEC:
+                print(f"[yellow]{sym} exceeded {PER_SYMBOL_MAX_SEC}s; moving on[/]")
 
     ranked = rank_ideas(pairs)
     write_signals_json("outputs/signals.json", ranked)
@@ -236,7 +275,9 @@ def run_once(
         if sym in latest_price_map:
             return latest_price_map[sym]
         if use_binance:
-            lp = binance_last_price(f"{sym}USDT")
+            lp = retry_call(lambda: binance_last_price(f"{sym}USDT"),
+                            tries=3, delay=0.5, backoff=1.7,
+                            on_error_msg=f"{sym}: last price failed")
             if lp is not None:
                 latest_price_map[sym] = float(lp)
                 return float(lp)
@@ -245,68 +286,67 @@ def run_once(
                 return float(p.entry_price)
         return 0.0
 
-    # ---- manage existing positions (exits & trails) ----
+    # ---- manage existing positions ----
     for pos in list(state.open_positions):
         sym = pos.symbol
         tup = pair_map.get(sym)
         price = get_price(sym)
 
-        # If we have fresh ind/decision, evaluate close-based/ta exits and trail update
-        if tup is not None:
-            ind, dec = tup
-            ev = evaluate_exit_rules(decision=dec, ind=ind, pos=pos, k_atr_trail=1.8)
+        try:
+            if tup is not None:
+                ind, dec = tup
+                ev = evaluate_exit_rules(decision=dec, ind=ind, pos=pos, k_atr_trail=1.8)
 
-            # trailing ratchet
-            if ev["new_trailing_stop"] is not None:
-                pos.stop_price = float(ev["new_trailing_stop"])
-                pos.last_update_iso = datetime.now(timezone.utc).isoformat()
-                dlog(f"[blue]TRAIL {sym} -> SL {pos.stop_price:.6g}[/]")
+                if ev["new_trailing_stop"] is not None:
+                    pos.stop_price = float(ev["new_trailing_stop"])
+                    pos.last_update_iso = datetime.now(timezone.utc).isoformat()
+                    dlog(f"[blue]TRAIL {sym} -> SL {pos.stop_price:.6g}[/]")
 
-            # close-based invalidation fires at bar close; our ind.latest_close is a closed bar
-            if ev["close_exit"]:
-                broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, ind.latest_close, pos.qty)
-                _append_trade_row(now_iso, "CLOSE_INV", sym, pos.side, pos.qty, ind.latest_close,
-                                  state.equity_usd, stop_price=pos.stop_price, targets=pos.targets,
-                                  note=ev.get("close_exit_reason", "close_based"))
+                if ev["close_exit"]:
+                    broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, ind.latest_close, pos.qty)
+                    _append_trade_row(now_iso, "CLOSE_INV", sym, pos.side, pos.qty, ind.latest_close,
+                                      state.equity_usd, stop_price=pos.stop_price, targets=pos.targets,
+                                      note=ev.get("close_exit_reason", "close_based"))
+                    state.open_positions = [p for p in state.open_positions if p.symbol != sym]
+                    set_cooldown(state, sym, cooldown_minutes)
+                    dlog(f"[red]CLOSE_INV {sym} @ {ind.latest_close:.6g} ({ev.get('close_exit_reason','')})[/]")
+                    continue
+
+            if pos.stop_price and price > 0 and price <= pos.stop_price:
+                broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, price, pos.qty)
+                _append_trade_row(now_iso, "STOP", sym, pos.side, pos.qty, price, state.equity_usd,
+                                  stop_price=pos.stop_price, targets=pos.targets, note="stop_hit")
                 state.open_positions = [p for p in state.open_positions if p.symbol != sym]
                 set_cooldown(state, sym, cooldown_minutes)
-                dlog(f"[red]CLOSE_INV {sym} @ {ind.latest_close:.6g} ({ev.get('close_exit_reason','')})[/]")
+                dlog(f"[red]STOP {sym} @ {price:.6g}[/]")
                 continue
 
-        # hard stop (tick based)
-        if pos.stop_price and price > 0 and price <= pos.stop_price:
-            broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, price, pos.qty)
-            _append_trade_row(now_iso, "STOP", sym, pos.side, pos.qty, price, state.equity_usd,
-                              stop_price=pos.stop_price, targets=pos.targets, note="stop_hit")
-            state.open_positions = [p for p in state.open_positions if p.symbol != sym]
-            set_cooldown(state, sym, cooldown_minutes)
-            dlog(f"[red]STOP {sym} @ {price:.6g}[/]")
-            continue
+            if tup is not None:
+                ind, _ = tup
+                price = float(safe(getattr(ind, "live_price", ind.latest_close)))
+                remaining = [t for t in pos.targets if t not in pos.filled_targets]
+                for t in sorted(remaining):
+                    if price >= t:
+                        tp_qty = pos.qty * (0.5 if not pos.filled_targets else 1.0)
+                        broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, price, tp_qty)
+                        _append_trade_row(now_iso, "TP", sym, pos.side, tp_qty, price, state.equity_usd,
+                                          stop_price=pos.stop_price, targets=pos.targets, note=f"tp@{t}")
+                        pos.qty -= tp_qty
+                        pos.filled_targets.append(t)
+                        pos.last_update_iso = datetime.now(timezone.utc).isoformat()
+                        dlog(f"[green]TP {sym} at {t:.6g} qty={tp_qty:.6g}[/]")
+                        if len(pos.filled_targets) == 1:
+                            pos.stop_price = max(safe(pos.stop_price, 0.0), pos.entry_price)
+                            dlog(f"[blue]MOVE SL {sym} -> BE {pos.stop_price:.6g}[/]")
+                        if pos.qty <= 0:
+                            state.open_positions = [p for p in state.open_positions if p.symbol != sym]
+                            set_cooldown(state, sym, cooldown_minutes)
+                        break
+        except Exception as e:
+            dlog(f"[yellow]manage loop error {sym}: {e}")
+            traceback.print_exc()
 
-        # handle profit targets if we still have a fresh ind
-        if tup is not None:
-            ind, _ = tup
-            price = float(safe(getattr(ind, "live_price", ind.latest_close)))
-            remaining = [t for t in pos.targets if t not in pos.filled_targets]
-            for t in sorted(remaining):
-                if price >= t:
-                    tp_qty = pos.qty * (0.5 if not pos.filled_targets else 1.0)
-                    broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, price, tp_qty)
-                    _append_trade_row(now_iso, "TP", sym, pos.side, tp_qty, price, state.equity_usd,
-                                      stop_price=pos.stop_price, targets=pos.targets, note=f"tp@{t}")
-                    pos.qty -= tp_qty
-                    pos.filled_targets.append(t)
-                    pos.last_update_iso = datetime.now(timezone.utc).isoformat()
-                    dlog(f"[green]TP {sym} at {t:.6g} qty={tp_qty:.6g}[/]")
-                    if len(pos.filled_targets) == 1:
-                        pos.stop_price = max(safe(pos.stop_price, 0.0), pos.entry_price)
-                        dlog(f"[blue]MOVE SL {sym} -> BE {pos.stop_price:.6g}[/]")
-                    if pos.qty <= 0:
-                        state.open_positions = [p for p in state.open_positions if p.symbol != sym]
-                        set_cooldown(state, sym, cooldown_minutes)
-                    break
-
-    # ---- open new / replace weakest if at capacity ----
+    # ---- open new / replace weakest ----
     MAX_REPLACE_MARGIN = 8.0
     open_syms = {p.symbol for p in state.open_positions}
 
@@ -325,63 +365,68 @@ def run_once(
             continue
         ind, dec = ind_dec
 
-        if not should_open(dec, ind):
-            continue
-        price = float(safe(getattr(ind, "live_price", ind.latest_close)))
-        if not in_entry_band(dec, price):
-            continue
-
-        if len(state.open_positions) >= max_positions:
-            wpos, wscore = worst_open()
-            if wpos is None or r.score <= (wscore if wscore is not None else -1e9) + MAX_REPLACE_MARGIN:
-                continue
-            exit_px = get_price(wpos.symbol)
-            broker.market_sell(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
-            _append_trade_row(now_iso, "REPLACE_CLOSE", wpos.symbol, wpos.side, wpos.qty, exit_px, state.equity_usd,
-                              stop_price=wpos.stop_price, targets=wpos.targets, note=f"replaced_by={sym}")
-            state.open_positions = [p for p in state.open_positions if p.symbol != wpos.symbol]
-            dlog(f"[yellow]REPLACE {wpos.symbol} (score {wscore:.1f}) -> {sym} (score {r.score:.1f})[/]")
-
-        raw_stop = pick_stop(dec, fallback_stop_pct, price)
-        raw_targets = map_targets(dec)
-        targets, stop_price = sanitize_levels(
-            price=price,
-            atr=float(safe(getattr(ind, "atr", 0.0))),
-            action=getattr(dec, "action", "long"),
-            raw_targets=raw_targets,
-            stop_price=raw_stop,
-            fallback_stop_pct=fallback_stop_pct,
-        )
-
-        qty = decide_size(state.equity_usd, price, risk_per_trade_pct, stop_price, getattr(dec, "action", "long"))
-        if qty * price > state.equity_usd:
-            qty = max(0.0, state.equity_usd / price)
-        if qty <= 0:
-            continue
-
         try:
-            broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, qty)
-        except Exception as e:
-            affordable_qty = max(0.0, state.equity_usd / price)
-            if affordable_qty > 0:
-                broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, affordable_qty)
-                qty = affordable_qty
-            else:
-                dlog(f"[yellow]SKIP OPEN {sym}: {e}")
+            if not should_open(dec, ind):
+                continue
+            price = float(safe(getattr(ind, "live_price", ind.latest_close)))
+            if not in_entry_band(dec, price):
                 continue
 
-        from .trade_models import Position  # local import to avoid circulars
-        state.open_positions.append(
-            Position(symbol=sym, side=getattr(dec, "action", "long"), qty=qty, entry_price=price,
-                     stop_price=stop_price, targets=targets)
-        )
-        set_cooldown(state, sym, cooldown_minutes)
-        notional = qty * price
-        direction = getattr(dec, "action", "long")
-        _append_trade_row(now_iso, "OPEN", sym, direction, qty, price, state.equity_usd,
-                          stop_price=stop_price, targets=targets, note="open_pos")
-        dlog(f"[cyan]OPEN {sym} dir={direction} qty={qty:.6g} @ {price:.6g} "
-             f"notional=${notional:,.2f} SL={stop_price:.6g} TGTS={targets}[/]")
+            if len(state.open_positions) >= max_positions:
+                wpos, wscore = worst_open()
+                if wpos is None or r.score <= (wscore if wscore is not None else -1e9) + MAX_REPLACE_MARGIN:
+                    continue
+                exit_px = get_price(wpos.symbol)
+                broker.market_sell(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
+                _append_trade_row(now_iso, "REPLACE_CLOSE", wpos.symbol, wpos.side, wpos.qty, exit_px, state.equity_usd,
+                                  stop_price=wpos.stop_price, targets=wpos.targets, note=f"replaced_by={sym}")
+                state.open_positions = [p for p in state.open_positions if p.symbol != wpos.symbol]
+                dlog(f"[yellow]REPLACE {wpos.symbol} (score {wscore:.1f}) -> {sym} (score {r.score:.1f})[/]")
+
+            raw_stop = pick_stop(dec, fallback_stop_pct, price)
+            raw_targets = map_targets(dec)
+            targets, stop_price = sanitize_levels(
+                price=price,
+                atr=float(safe(getattr(ind, "atr", 0.0))),
+                action=getattr(dec, "action", "long"),
+                raw_targets=raw_targets,
+                stop_price=raw_stop,
+                fallback_stop_pct=fallback_stop_pct,
+            )
+
+            qty = decide_size(state.equity_usd, price, risk_per_trade_pct, stop_price, getattr(dec, "action", "long"))
+            if qty * price > state.equity_usd:
+                qty = max(0.0, state.equity_usd / price)
+            if qty <= 0:
+                continue
+
+            # place order with fallback to affordable qty
+            try:
+                broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, qty)
+            except Exception:
+                affordable_qty = max(0.0, state.equity_usd / price)
+                if affordable_qty > 0:
+                    broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, affordable_qty)
+                    qty = affordable_qty
+                else:
+                    dlog(f"[yellow]SKIP OPEN {sym}: insufficient equity")
+                    continue
+
+            from .trade_models import Position
+            state.open_positions.append(
+                Position(symbol=sym, side=getattr(dec, "action", "long"), qty=qty, entry_price=price,
+                         stop_price=stop_price, targets=targets)
+            )
+            set_cooldown(state, sym, cooldown_minutes)
+            notional = qty * price
+            direction = getattr(dec, "action", "long")
+            _append_trade_row(now_iso, "OPEN", sym, direction, qty, price, state.equity_usd,
+                              stop_price=stop_price, targets=targets, note="open_pos")
+            dlog(f"[cyan]OPEN {sym} dir={direction} qty={qty:.6g} @ {price:.6g} "
+                 f"notional=${notional:,.2f} SL={stop_price:.6g} TGTS={targets}[/]")
+        except Exception as e:
+            dlog(f"[yellow]open loop error {sym}: {e}")
+            traceback.print_exc()
 
     # ---- persist & logs ----
     state.last_run_iso = now_iso
@@ -395,15 +440,26 @@ def run_once(
         for line in daemon_lines:
             f.write(line + "\n")
 
+    # final: touch heartbeat
+    _touch_heartbeat()
 
 def run_loop(interval_sec: int = 300, **kwargs):
     print(f"[bold]Continuous monitor[/] every {interval_sec}s (Ctrl+C to stop)")
+    backoff = 1.0
     while True:
         try:
             run_once(**kwargs)
+            backoff = 1.0  # reset on success
         except KeyboardInterrupt:
             print("[yellow]Interrupted by user[/]")
             break
         except Exception as e:
-            print(f"[red]Loop error:[/] {e}")
-        time.sleep(interval_sec)
+            # never die: log and back off
+            print(f"[red]Loop error (top-level):[/] {e}")
+            traceback.print_exc()
+            with open(DAEMON_LOG, "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now(timezone.utc).isoformat()} TOP-LEVEL ERROR: {e}\n")
+        # sleep with capped backoff; always >= interval_sec
+        sleep_for = max(interval_sec, min(interval_sec * backoff, 3600))
+        time.sleep(sleep_for)
+        backoff = min(backoff * 2.0, 12.0)
