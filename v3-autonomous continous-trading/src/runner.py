@@ -3,14 +3,16 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Tuple, List, Callable, Any
+from typing import Tuple, List, Callable, Any, Dict, Optional
 
 from rich import print
 
+from .pnl import log_portfolio_pnl, log_positions_pnl
 from .universe import top_coins
 from .fetch import ohlcv_daily_coingecko, binance_klines, binance_last_price
 from .ta import compute_indicators
@@ -33,6 +35,12 @@ POSITIONS_JSON = Path("outputs/positions/current_positions.json")
 POSITIONS_CSV = Path("outputs/positions/current_positions.csv")
 EQUITY_TS_CSV = Path("outputs/run_logs/equity_timeseries.csv")
 SCAN_DEBUG_CSV = Path("outputs/run_logs/scan_debug.csv")
+
+# ---- sizing / allocation knobs (no fixed $ amounts) ----
+ALLOC_CASH_BUFFER = 0.02      # keep small cash buffer when allocating
+SOFTMAX_TEMP = 8.0            # lower => more peaky toward the top score
+MIN_NOTIONAL_FRAC = 0.003     # adaptive dust threshold: fraction of equity / max_positions
+CASH_EPS = 1e-6               # epsilon to prevent float-rounding “insufficient equity”
 
 # skip these from trading
 STABLES_OR_NONPAIRS = {
@@ -95,7 +103,7 @@ def _write_positions_snapshot(state, price_map: dict[str, float]) -> None:
         cur_px = float(price_map.get(p.symbol, p.entry_price))
         mkt_val = float(cur_px * p.qty)
         unreal = float((cur_px - p.entry_price) * p.qty) if p.side == "long" else float((p.entry_price - cur_px) * p.qty)
-        total_mkt_value += mkt_val if p.side == "long" else -mkt_val  # show signed for shorts
+        total_mkt_value += mkt_val if p.side == "long" else -mkt_val
         total_unreal += unreal
         data.append({
             "symbol": p.symbol,
@@ -155,6 +163,87 @@ def _touch_heartbeat():
     with open(HEARTBEAT, "w", encoding="utf-8") as f:
         f.write(datetime.now(timezone.utc).isoformat())
 
+# --------- allocation helpers (score -> weights -> budget) ---------
+
+def _softmax(xs: List[float], temp: float = SOFTMAX_TEMP) -> List[float]:
+    if not xs:
+        return []
+    m = max(xs)
+    exps = [math.exp((x - m) / max(1e-9, temp)) for x in xs]
+    s = sum(exps)
+    return [e / s for e in exps] if s > 0 else [1.0 / len(xs) for _ in xs]
+
+def _remaining_cash(state) -> float:
+    try:
+        return float(state.equity_usd)
+    except Exception:
+        return 0.0
+
+def _min_notional(equity: float, max_positions: int) -> float:
+    base = max(1, max_positions)
+    return float(equity) * float(MIN_NOTIONAL_FRAC) / base
+
+def _clamp_qty_to_cash(qty: float, price: float, cash: float) -> float:
+    if qty <= 0 or price <= 0 or cash <= 0:
+        return 0.0
+    notional = qty * price
+    if notional <= cash:
+        return qty
+    return max(0.0, (cash - CASH_EPS) / price)
+
+def _first_float_like(x) -> Optional[float]:
+    try:
+        if x is None:
+            return None
+        if isinstance(x, (int, float)):
+            return float(x)
+        if isinstance(x, str):
+            import re
+            m = re.search(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?", x)
+            return float(m.group(0)) if m else None
+        if isinstance(x, list) and x:
+            return _first_float_like(x[0])
+    except Exception:
+        return None
+    return None
+
+def _extract_llm_sizing(dec, *, price: float, equity: float, remaining_cash: float,
+                        default_risk_pct: float) -> tuple[Optional[float], float]:
+    """
+    Try to read sizing from the LLM:
+      - notional_usd (absolute)
+      - size_pct / allocation_pct / allocation (percentage of remaining cash)
+      - risk_pct (per-trade risk, overrides default if provided)
+    Returns: (desired_notional_or_None, risk_pct_used)
+    """
+    # risk override
+    risk_pct = _first_float_like(getattr(dec, "risk_pct", None))
+    if risk_pct is not None and risk_pct > 1.0:
+        risk_pct = risk_pct / 100.0
+    if risk_pct is None or risk_pct <= 0:
+        risk_pct = float(default_risk_pct)
+
+    # notional in USD?
+    notional = _first_float_like(getattr(dec, "notional_usd", None))
+    if notional is not None and notional > 0:
+        return (min(float(remaining_cash), float(notional)), risk_pct)
+
+    # or percent of remaining cash?
+    pct = (
+        _first_float_like(getattr(dec, "size_pct", None)) or
+        _first_float_like(getattr(dec, "allocation_pct", None)) or
+        _first_float_like(getattr(dec, "allocation", None)) or
+        _first_float_like(getattr(dec, "size", None))
+    )
+    if pct is not None:
+        if pct > 1.0:  # treat like 10 -> 10%
+            pct = pct / 100.0
+        pct = max(0.0, min(1.0, pct))
+        return (remaining_cash * pct, risk_pct)
+
+    # no sizing provided
+    return (None, risk_pct)
+
 def run_once(
     *,
     universe_size: int,
@@ -175,7 +264,8 @@ def run_once(
 ) -> None:
     """
     Full scan + trade management cycle (supports LONG and SHORT),
-    with defensive retries, per-symbol time guards and detailed debug logging.
+    with LLM-led sizing when provided (notional/percent/risk),
+    otherwise score-weighted allocation + risk cap.
     """
     state = load_state()
     ensure_dir("outputs/top10_charts"); ensure_dir("outputs/run_logs"); ensure_dir("outputs/positions")
@@ -225,7 +315,7 @@ def run_once(
 
             ind = compute_indicators(df, sym, tf)
 
-            # liquidity/volatility filters
+            # liquidity/vol filters
             if safe(getattr(ind, "adv_usd_20", 0.0)) < min_adv_usd:
                 debug_rows.append([now_iso, sym, "SKIP", f"min_adv_usd<{min_adv_usd}"])
                 continue
@@ -242,7 +332,7 @@ def run_once(
                 ind.live_price = float(ind.latest_close)
             latest_price_map[sym] = float(ind.live_price)
 
-            # LLM decision (always parse, even if raw is None -> "{}")
+            # LLM decision
             raw = retry_call(lambda: (ask_vision(vision_model, ind, "") if use_vision else ask_text(text_model, ind)),
                              tries=2, delay=1.0, backoff=2.0, on_error_msg=f"{sym}: LLM call failed")
             dec = parse_llm_json(sym, ind.timeframe, raw or "{}")
@@ -263,7 +353,7 @@ def run_once(
     write_signals_json("outputs/signals.json", ranked)
 
     score_map = {r.symbol: r.score for r in ranked}
-    pair_map = {i.symbol: (i, d) for (i, d) in pairs}
+    pair_map: Dict[str, Tuple] = {i.symbol: (i, d) for (i, d) in pairs}
 
     daemon_lines = []
     def dlog(msg: str):
@@ -301,7 +391,6 @@ def run_once(
                     dlog(f"[blue]TRAIL {sym} -> SL {pos.stop_price:.6g}[/]")
 
                 if ev["close_exit"]:
-                    # close by side
                     if pos.side == "long":
                         broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, ind.latest_close, pos.qty)
                     else:
@@ -314,7 +403,6 @@ def run_once(
                     dlog(f"[red]CLOSE_INV {sym} @ {ind.latest_close:.6g} ({ev.get('close_exit_reason','')})[/]")
                     continue
 
-            # hard stop (tick-based): diff for short vs long
             if pos.stop_price and price > 0:
                 if (pos.side == "long" and price <= pos.stop_price) or (pos.side == "short" and price >= pos.stop_price):
                     if pos.side == "long":
@@ -328,7 +416,6 @@ def run_once(
                     dlog(f"[red]STOP {sym} @ {price:.6g}[/]")
                     continue
 
-            # profit targets
             if tup is not None:
                 ind, _ = tup
                 price = float(safe(getattr(ind, "live_price", ind.latest_close)))
@@ -347,7 +434,6 @@ def run_once(
                         pos.filled_targets.append(t)
                         pos.last_update_iso = datetime.now(timezone.utc).isoformat()
                         dlog(f"[green]TP {sym} at {t:.6g} qty={tp_qty:.6g}[/]")
-                        # move SL to BE after first TP
                         if len(pos.filled_targets) == 1:
                             if pos.side == "long":
                                 pos.stop_price = max(safe(pos.stop_price, 0.0), pos.entry_price)
@@ -362,7 +448,7 @@ def run_once(
             dlog(f"[yellow]manage loop error {sym}: {e}")
             traceback.print_exc()
 
-    # ---- open new / replace weakest (support short & long) ----
+    # ---- open new / replace weakest (LLM sizing first, else allocation) ----
     MAX_REPLACE_MARGIN = 8.0
     open_syms = {p.symbol for p in state.open_positions}
 
@@ -372,36 +458,49 @@ def run_once(
         w = min(state.open_positions, key=lambda p: score_map.get(p.symbol, -1e9))
         return w, score_map.get(w.symbol, -1e9)
 
+    eligible: List[Tuple] = []
     for r in ranked:
-        sym = r.symbol
-        if sym in open_syms:
+        if r.symbol in open_syms:
             continue
-        ind_dec = pair_map.get(sym)
+        ind_dec = pair_map.get(r.symbol)
         if ind_dec is None:
             continue
         ind, dec = ind_dec
-
         try:
             if not should_open(dec, ind):
                 continue
             price = float(safe(getattr(ind, "live_price", ind.latest_close)))
             if not in_entry_band(dec, price):
                 continue
+            eligible.append((r, ind, dec, price))
+        except Exception:
+            continue
 
-            if len(state.open_positions) >= max_positions:
-                wpos, wscore = worst_open()
-                if wpos is None or r.score <= (wscore if wscore is not None else -1e9) + MAX_REPLACE_MARGIN:
-                    continue
-                exit_px = get_price(wpos.symbol)
-                # close worst by side
-                if wpos.side == "long":
-                    broker.market_sell(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
-                else:
-                    broker.market_buy(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
-                _append_trade_row(now_iso, "REPLACE_CLOSE", wpos.symbol, wpos.side, wpos.qty, exit_px, state.equity_usd,
-                                  stop_price=wpos.stop_price, targets=wpos.targets, note=f"replaced_by={sym}")
-                state.open_positions = [p for p in state.open_positions if p.symbol != wpos.symbol]
-                dlog(f"[yellow]REPLACE {wpos.symbol} (score {wscore:.1f}) -> {sym} (score {r.score:.1f})[/]")
+    slots = max(0, max_positions - len(state.open_positions))
+    if slots > 0 and eligible:
+        top = eligible[:slots]
+        scores = [r.score for (r, _i, _d, _p) in top]
+        weights = _softmax(scores, SOFTMAX_TEMP)
+
+        remaining_cash = _remaining_cash(state) * (1.0 - ALLOC_CASH_BUFFER)
+        min_notional = _min_notional(state.equity_usd, max_positions)
+
+        for (weight, (r, ind, dec, price)) in zip(weights, top):
+            # Let the LLM choose: read notional/percent/risk if provided
+            llm_notional, risk_pct_used = _extract_llm_sizing(
+                dec,
+                price=price,
+                equity=float(state.equity_usd),
+                remaining_cash=float(remaining_cash),
+                default_risk_pct=float(risk_per_trade_pct),
+            )
+            desired_notional = (
+                llm_notional if (llm_notional is not None and llm_notional > 0)
+                else max(0.0, remaining_cash * float(weight))
+            )
+            if desired_notional < min_notional:
+                dlog(f"[yellow]SKIP OPEN {r.symbol}: notional below adaptive dust ({desired_notional:.2f} < {min_notional:.2f})[/]")
+                continue
 
             raw_stop = pick_stop(dec, fallback_stop_pct, price)
             raw_targets = map_targets(dec)
@@ -414,43 +513,129 @@ def run_once(
                 fallback_stop_pct=fallback_stop_pct,
             )
 
-            side = getattr(dec, "action", "long")
-            qty = decide_size(state.equity_usd, price, risk_per_trade_pct, stop_price, side)
-            if qty * price > state.equity_usd and side == "long":
-                qty = max(0.0, state.equity_usd / price)
-            if qty <= 0:
+            side = getattr(dec, "action", "long").lower()
+            qty_risk = decide_size(state.equity_usd, price, risk_pct_used, stop_price, side)
+            qty_budget = desired_notional / price if price > 0 else 0.0
+            qty = min(qty_risk, qty_budget)
+
+            qty = _clamp_qty_to_cash(qty, price, float(state.equity_usd))
+            if qty <= 0 or qty * price < min_notional:
+                dlog(f"[yellow]SKIP OPEN {r.symbol}: qty too small after clamps[/]")
                 continue
 
-            # open by side
-            if side == "long":
+            try:
+                if side == "long":
+                    broker.market_buy(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty)
+                else:
+                    broker.market_sell(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty)
+            except Exception as e:
+                qty2 = _clamp_qty_to_cash(qty, price, float(state.equity_usd))
+                if qty2 <= 0 or qty2 * price < min_notional:
+                    dlog(f"[yellow]SKIP OPEN {r.symbol}: {e} (after clamp)[/]")
+                    continue
                 try:
-                    broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, qty)
-                except Exception:
-                    affordable_qty = max(0.0, state.equity_usd / price)
-                    if affordable_qty > 0:
-                        broker.market_buy(state, f"{sym}/USDT" if broker.live else sym, price, affordable_qty)
-                        qty = affordable_qty
+                    if side == "long":
+                        broker.market_buy(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty2)
                     else:
-                        dlog(f"[yellow]SKIP OPEN {sym}: insufficient equity")
-                        continue
-            else:
-                # opening a short = sell first
-                broker.market_sell(state, f"{sym}/USDT" if broker.live else sym, price, qty)
+                        broker.market_sell(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty2)
+                    qty = qty2
+                except Exception as e2:
+                    dlog(f"[yellow]SKIP OPEN {r.symbol}: {e2}[/]")
+                    continue
 
             from .trade_models import Position
             state.open_positions.append(
-                Position(symbol=sym, side=side, qty=qty, entry_price=price,
+                Position(symbol=r.symbol, side=side, qty=qty, entry_price=price,
                          stop_price=stop_price, targets=targets)
             )
-            set_cooldown(state, sym, cooldown_minutes)
+            set_cooldown(state, r.symbol, cooldown_minutes)
             notional = qty * price
-            _append_trade_row(now_iso, "OPEN", sym, side, qty, price, state.equity_usd,
+            _append_trade_row(now_iso, "OPEN", r.symbol, side, qty, price, state.equity_usd,
                               stop_price=stop_price, targets=targets, note=f"open_{side}")
-            dlog(f"[cyan]OPEN {sym} dir={side} qty={qty:.6g} @ {price:.6g} "
+            dlog(f"[cyan]OPEN {r.symbol} dir={side} qty={qty:.6g} @ {price:.6g} "
                  f"notional=${notional:,.2f} SL={stop_price:.6g} TGTS={targets}[/]")
-        except Exception as e:
-            dlog(f"[yellow]open loop error {sym}: {e}")
-            traceback.print_exc()
+
+            remaining_cash = max(0.0, _remaining_cash(state) * (1.0 - ALLOC_CASH_BUFFER))
+
+    # Replacement logic (keeps best ideas)
+    for r in ranked:
+        if len(state.open_positions) < max_positions:
+            break
+        if r.symbol in {p.symbol for p in state.open_positions}:
+            continue
+        ind_dec = pair_map.get(r.symbol)
+        if ind_dec is None:
+            continue
+        ind, dec = ind_dec
+        if not should_open(dec, ind):
+            continue
+        price = float(safe(getattr(ind, "live_price", ind.latest_close)))
+        if not in_entry_band(dec, price):
+            continue
+
+        wpos, wscore = worst_open()
+        if wpos is None or r.score <= (wscore if wscore is not None else -1e9) + MAX_REPLACE_MARGIN:
+            continue
+
+        exit_px = get_price(wpos.symbol)
+        if wpos.side == "long":
+            broker.market_sell(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
+        else:
+            broker.market_buy(state, f"{wpos.symbol}/USDT" if broker.live else wpos.symbol, exit_px, wpos.qty)
+        _append_trade_row(now_iso, "REPLACE_CLOSE", wpos.symbol, wpos.side, wpos.qty, exit_px, state.equity_usd,
+                          stop_price=wpos.stop_price, targets=wpos.targets, note=f"replaced_by={r.symbol}")
+        state.open_positions = [p for p in state.open_positions if p.symbol != wpos.symbol]
+        dlog(f"[yellow]REPLACE {wpos.symbol} (score {wscore:.1f}) -> {r.symbol} (score {r.score:.1f})[/]")
+
+        # Re-open with LLM sizing if provided, else fair slice
+        remaining_cash = _remaining_cash(state) * (1.0 - ALLOC_CASH_BUFFER)
+        min_notional = _min_notional(state.equity_usd, max_positions)
+
+        llm_notional, risk_pct_used = _extract_llm_sizing(
+            dec,
+            price=price,
+            equity=float(state.equity_usd),
+            remaining_cash=float(remaining_cash),
+            default_risk_pct=float(risk_per_trade_pct),
+        )
+        desired_notional = llm_notional if (llm_notional is not None and llm_notional > 0) else max(min_notional, remaining_cash / max(1, max_positions))
+
+        raw_stop = pick_stop(dec, fallback_stop_pct, price)
+        raw_targets = map_targets(dec)
+        targets, stop_price = sanitize_levels(
+            price=price,
+            atr=float(safe(getattr(ind, "atr", 0.0))),
+            action=getattr(dec, "action", "long"),
+            raw_targets=raw_targets,
+            stop_price=raw_stop,
+            fallback_stop_pct=fallback_stop_pct,
+        )
+
+        side = getattr(dec, "action", "long").lower()
+        qty_risk = decide_size(state.equity_usd, price, risk_pct_used, stop_price, side)
+        qty_budget = desired_notional / price if price > 0 else 0.0
+        qty = min(qty_risk, qty_budget)
+        qty = _clamp_qty_to_cash(qty, price, float(state.equity_usd))
+        if qty <= 0 or qty * price < min_notional:
+            dlog(f"[yellow]SKIP OPEN {r.symbol}: qty too small after replacement clamps[/]")
+            continue
+
+        if side == "long":
+            broker.market_buy(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty)
+        else:
+            broker.market_sell(state, f"{r.symbol}/USDT" if broker.live else r.symbol, price, qty)
+
+        from .trade_models import Position
+        state.open_positions.append(
+            Position(symbol=r.symbol, side=side, qty=qty, entry_price=price,
+                     stop_price=stop_price, targets=targets)
+        )
+        set_cooldown(state, r.symbol, cooldown_minutes)
+        notional = qty * price
+        _append_trade_row(now_iso, "OPEN", r.symbol, side, qty, price, state.equity_usd,
+                          stop_price=stop_price, targets=targets, note=f"open_{side}_repl")
+        dlog(f"[cyan]OPEN {r.symbol} (replace) dir={side} qty={qty:.6g} @ {price:.6g} "
+             f"notional=${notional:,.2f} SL={stop_price:.6g} TGTS={targets}[/]")
 
     # ---- persist & logs ----
     state.last_run_iso = now_iso
@@ -465,6 +650,16 @@ def run_once(
             f.write(line + "\n")
 
     _touch_heartbeat()
+
+    # PnL logging (creates files if missing)
+    try:
+        log_portfolio_pnl(state, pos_price_map)
+    except Exception as e:
+        print(f("[yellow]Portfolio PnL logging failed:[/] {e}"))
+    try:
+        log_positions_pnl(state, pos_price_map)
+    except Exception as e:
+        print(f("[yellow]Positions PnL logging failed:[/] {e}"))
 
 def run_loop(interval_sec: int = 300, **kwargs):
     print(f"[bold]Continuous monitor[/] every {interval_sec}s (Ctrl+C to stop)")
