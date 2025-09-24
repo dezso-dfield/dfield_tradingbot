@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 from .trade_models import AccountState, Position
 from .schema import LLMDecision, IndicatorPacket
 
-
 # ---------------- LLM helpers & parsing ----------------
 
 def _first_float(x, default=None):
@@ -44,8 +43,8 @@ def parse_close_invalidation(inv_text: Optional[str]) -> Optional[float]:
     """
     Parse phrases like:
       - "close below 28.5"
-      - "daily close under 2.30"
-      - "weekly close < 1.05"
+      - "close under 2.30"
+      - "close < 1.05"
     Returns the numeric level if recognized, else None.
     """
     if not inv_text or not isinstance(inv_text, str):
@@ -60,8 +59,8 @@ def parse_close_invalidation(inv_text: Optional[str]) -> Optional[float]:
 
 def pick_stop(decision: LLMDecision, fallback_pct: float, price: float) -> float:
     """
-    Prefer explicit numeric invalidation; else a percent stop (long).
-    For shorts (not used yet), runner/ sanitize handles inversion.
+    Prefer explicit numeric invalidation; else percent stop baseline (long).
+    For shorts, inversion is handled in sanitize_levels.
     """
     inv = _first_float(getattr(decision, "invalidation", None))
     if inv is not None and inv > 0:
@@ -140,8 +139,7 @@ def sanitize_levels(
 
 def decide_size(equity_usd: float, price: float, risk_pct: float, stop_price: float, side: str) -> float:
     """
-    LLM decides direction/bias; we compute safe size.
-    qty = min( risk_based_qty, equity_based_qty )
+    qty = min( risk_based_qty, equity_based_qty ).
     """
     risk_usd = max(0.0, risk_pct) * max(0.0, float(equity_usd))
     per_unit_risk = abs(float(price) - float(stop_price))
@@ -154,16 +152,12 @@ def decide_size(equity_usd: float, price: float, risk_pct: float, stop_price: fl
 
 def should_open(decision: LLMDecision, ind: IndicatorPacket) -> bool:
     """
-    LLM controls action; we apply minimal regime guards to avoid obviously poor contexts.
+    Let the LLM own direction; require conviction only.
+    (No SMA200 gate; shorts and longs allowed.)
     """
     if getattr(decision, "action", None) not in ("long", "short"):
         return False
-    if float(getattr(decision, "conviction", 0.0)) < 0.6:
-        return False
-    # Example regime guard: for longs, require price above SMA200 (remove if you want fully LLM-led)
-    if decision.action == "long" and not bool(getattr(ind, "above_sma200", False)):
-        return False
-    return True
+    return float(getattr(decision, "conviction", 0.0)) >= 0.6
 
 
 # ---------------- Exit evaluation (hard SL, close-based invalidation, ATR trail) ----------------
@@ -177,10 +171,11 @@ def evaluate_exit_rules(
 ) -> Dict[str, object]:
     """
     Returns dict with:
-      - 'hard_stop_hit': bool  (price <= stop)
-      - 'new_trailing_stop': Optional[float] (when ratchet up)
-      - 'close_exit': bool (trigger close-at-close invalidation)
+      - 'hard_stop_hit': bool
+      - 'new_trailing_stop': Optional[float]
+      - 'close_exit': bool
       - 'close_exit_reason': str
+    Symmetric for long & short.
     """
     out = {
         "hard_stop_hit": False,
@@ -191,53 +186,52 @@ def evaluate_exit_rules(
 
     price = float(getattr(ind, "live_price", ind.latest_close))
     atr = float(getattr(ind, "atr", 0.0))
-    action = getattr(decision, "action", "long")
+    side = getattr(decision, "action", "long")
 
     # 1) Hard tick stop (immediate)
-    if pos.stop_price and price <= float(pos.stop_price) and action == "long":
-        out["hard_stop_hit"] = True
-        return out
+    if pos.stop_price and price > 0:
+        if (side == "long" and price <= float(pos.stop_price)) or (side == "short" and price >= float(pos.stop_price)):
+            out["hard_stop_hit"] = True
+            return out
 
-    # 2) ATR trailing (only after we’re in profit)
-    if action == "long" and atr > 0:
-        trail = price - k_atr_trail * atr
-        # ratchet only upwards and never above price
-        if pos.stop_price is None:
-            pass
-        else:
+    # 2) ATR trailing (only once in profit)
+    if atr > 0 and pos.stop_price is not None:
+        if side == "long":
+            trail = price - k_atr_trail * atr
             new_stop = max(float(pos.stop_price), trail)
             if new_stop > float(pos.stop_price) and new_stop < price:
                 out["new_trailing_stop"] = new_stop
+        else:  # short
+            trail = price + k_atr_trail * atr
+            new_stop = min(float(pos.stop_price), trail)
+            if new_stop < float(pos.stop_price) and new_stop > price:
+                out["new_trailing_stop"] = new_stop
 
-    # 3) Close-based invalidation:
-    #    - Explicit: "close below X" from LLM invalidation
-    #    - TA guard: close < SMA50 with bearish candle OR RSI breakdown
+    # 3) Close-based invalidation (text rule + simple TA guards)
     close_level = parse_close_invalidation(getattr(decision, "invalidation", None))
+    reasons: List[str] = []
 
-    if action == "long":
-        conds = []
-        reasons = []
-
-        if close_level is not None:
-            conds.append(ind.latest_close <= close_level)
-            reasons.append(f"close <= {close_level:g}")
-
-        # TA guard: trend & candle deterioration
+    if side == "long":
+        if close_level is not None and ind.latest_close <= close_level:
+            out["close_exit"] = True; reasons.append(f"close <= {close_level:g}")
         if getattr(ind, "sma50_slope", 0.0) < 0 and ind.latest_close < getattr(ind, "sma50", ind.latest_close * 10):
-            conds.append(True)
-            reasons.append("close < SMA50 & slope<0")
+            out["close_exit"] = True; reasons.append("close < SMA50 & slope<0")
         if getattr(ind, "candle_score", 0.0) <= -2.0:
-            conds.append(True)
-            reasons.append("bearish candle")
-
-        # optional RSI guard
+            out["close_exit"] = True; reasons.append("bearish candle")
         if getattr(ind, "rsi", 50.0) < 40.0:
-            conds.append(True)
-            reasons.append("RSI<40")
+            out["close_exit"] = True; reasons.append("RSI<40")
+    else:  # short
+        if close_level is not None and ind.latest_close >= close_level:
+            out["close_exit"] = True; reasons.append(f"close >= {close_level:g}")
+        if getattr(ind, "sma50_slope", 0.0) > 0 and ind.latest_close > getattr(ind, "sma50", 0.0):
+            out["close_exit"] = True; reasons.append("close > SMA50 & slope>0")
+        if getattr(ind, "candle_score", 0.0) >= 2.0:
+            out["close_exit"] = True; reasons.append("bullish candle")
+        if getattr(ind, "rsi", 50.0) > 60.0:
+            out["close_exit"] = True; reasons.append("RSI>60")
 
-        if any(conds):
-            out["close_exit"] = True
-            out["close_exit_reason"] = "; ".join(reasons)
+    if out["close_exit"]:
+        out["close_exit_reason"] = "; ".join(reasons)
 
     return out
 
