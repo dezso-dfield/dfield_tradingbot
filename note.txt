@@ -1,0 +1,2 @@
+RUN_IN_TMUX=1 ./run_daemon.sh
+tmux attach -t trader

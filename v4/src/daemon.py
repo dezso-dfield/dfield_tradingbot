@@ -1,4 +1,5 @@
 # src/daemon.py
+from __future__ import annotations
 import argparse
 from .runner import run_loop
 from .broker import Broker
@@ -16,10 +17,10 @@ def parse_args():
     p.add_argument("--limit", type=int, default=1000)
 
     # trading knobs
-    p.add_argument("--risk-per-trade-pct", type=float, default=0.01)  # 1% risk
+    p.add_argument("--risk-per-trade-pct", type=float, default=0.01)
     p.add_argument("--max-positions", type=int, default=5)
     p.add_argument("--cooldown-minutes", type=int, default=60)
-    p.add_argument("--fallback-stop-pct", type=float, default=0.03)  # 3% if no invalidation
+    p.add_argument("--fallback-stop-pct", type=float, default=0.03)
     p.add_argument("--min-adv-usd", type=float, default=2_000_000)
     p.add_argument("--max-atr-pct", type=float, default=0.25)
 
@@ -27,7 +28,6 @@ def parse_args():
     p.add_argument("--exchange", type=str, default="binance")
     p.add_argument("--testnet", type=lambda x: str(x).lower()=="true", default=True)
     p.add_argument("--live", type=lambda x: str(x).lower()=="true", default=False)
-
     return p.parse_args()
 
 def main():
@@ -53,4 +53,10 @@ def main():
     )
 
 if __name__ == "__main__":
-    main()
+    # never let top-level exceptions kill the process
+    try:
+        main()
+    except Exception as e:
+        # last-resort log to stderr; launchd/tmux will keep it alive anyway
+        import sys, traceback
+        traceback.print_exc(file=sys.stderr)
